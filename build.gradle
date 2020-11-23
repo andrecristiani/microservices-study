@@ -1,0 +1,128 @@
+buildscript {
+	ext {
+		springBootVersion = '2.3.4.RELEASE'
+		feignVersion = '11.0'
+	}
+	repositories {
+		mavenCentral()
+		jcenter()
+	}
+	dependencies {
+		classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+		classpath("com.commercehub.gradle.plugin:gradle-avro-plugin:0.15.0")
+	}
+}
+
+apply plugin: 'java'
+apply plugin: 'eclipse'
+apply plugin: 'org.springframework.boot'
+apply plugin: 'io.spring.dependency-management'
+apply plugin: 'com.commercehub.gradle.plugin.avro'
+apply plugin: 'org.springframework.boot'
+apply plugin: 'io.spring.dependency-management'
+
+group = 'com.study'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '11'
+
+repositories {
+	mavenCentral()
+	maven { url "http://packages.confluent.io/maven/" }
+	maven { url "http://splunk.artifactoryonline.com/splunk/ext-releases-local" }
+}
+
+configurations {
+	compile.exclude module: 'slf4j-log4j12'
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+	cucumberRuntime {
+		extendsFrom testRuntime
+	}
+}
+
+ext {
+	springCloudVersion = 'Finchley.SR1'
+	mapstructVersion = "1.4.0.Beta2"
+	lombokVersion = "1.18.12"
+}
+
+dependencies {
+	implementation "org.mapstruct:mapstruct:${mapstructVersion}", "org.projectlombok:lombok:${lombokVersion}"
+	annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}", "org.projectlombok:lombok:${lombokVersion}"
+
+	implementation "org.apache.avro:avro:1.10.0"
+	compile('org.springframework.cloud:spring-cloud-stream')
+	compile('org.springframework.cloud:spring-cloud-stream-binder-kafka')
+	compile group: 'io.confluent', name: 'kafka-schema-registry-client', version: '5.3.0'
+	compile('org.springframework.kafka:spring-kafka')
+	compile("io.confluent:kafka-avro-serializer:5.0.0")
+	compile group: 'org.springframework', name: 'spring-web', version: '5.2.9.RELEASE'
+	implementation('org.springframework.boot:spring-boot-starter-web')
+	testCompile('org.springframework.boot:spring-boot-starter-test')
+	testCompile('org.springframework.cloud:spring-cloud-stream-test-support')
+	testCompile('org.junit.jupiter:junit-jupiter:5.4.2')
+	testImplementation('org.junit.jupiter:junit-jupiter:5.4.2')
+
+	compile group: 'com.github.derjust', name: 'spring-data-dynamodb', version: '5.1.0'
+	compile group: 'com.amazonaws', name: 'aws-java-sdk-dynamodb', version: '1.11.64'
+
+	compile group: 'org.springframework.cloud', name: 'spring-cloud-starter-openfeign'
+
+	implementation 'org.springframework.cloud:spring-cloud-starter-netflix-hystrix'
+
+	testCompile 'io.cucumber:cucumber-java:6.8.1'
+	testCompile group: 'io.cucumber', name: 'cucumber-junit', version: '6.8.0'
+
+	// https://mvnrepository.com/artifact/ch.qos.logback/logback-classic
+	compile group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.3'
+
+	// https://mvnrepository.com/artifact/ch.qos.logback/logback-core
+	compile group: 'ch.qos.logback', name: 'logback-core', version: '1.2.3'
+
+	// https://mvnrepository.com/artifact/org.slf4j/slf4j-api
+	compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.29'
+
+	// https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-core
+	compile group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.13.2'
+
+	// https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-api
+	compile group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.12.1'
+
+	// https://mvnrepository.com/artifact/com.splunk.logging/splunk-library-javalogging
+	runtime group: 'com.splunk.logging', name: 'splunk-library-javalogging', version: '1.7.3'
+
+	testCompile "com.github.tomakehurst:wiremock-jre8:2.27.2"
+
+	testImplementation('org.springframework.boot:spring-boot-starter-test') {
+		exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
+	}
+	testImplementation 'org.springframework.kafka:spring-kafka-test'
+
+}
+
+def generateAvro = tasks.register("generateAvro", com.commercehub.gradle.plugin.avro.GenerateAvroJavaTask) {
+	source("src/avro")
+	outputDir = file("dest/avro")
+}
+
+tasks.named("compileJava").configure {
+	source(generateAvro)
+}
+
+task cucumber() {
+	dependsOn assemble, testClasses
+	doLast {
+		javaexec {
+			main = "io.cucumber.core.cli.Main"
+			classpath = configurations.cucumberRuntime + sourceSets.main.output + sourceSets.test.output
+			args = ['--plugin', 'pretty', '--glue', 'gradle.cucumber', 'src/test/resources']
+		}
+	}
+}
+
+dependencyManagement {
+	imports {
+		mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+	}
+}

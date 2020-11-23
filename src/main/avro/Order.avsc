@@ -1,0 +1,26 @@
+{
+  "type": "record",
+  "namespace": "com.avro.store",
+  "name": "Order",
+  "version": "1",
+  "fields": [
+    { "name": "orderId", "type": "string", "doc": "Id of the order filed" },
+    { "name": "customerId", "type": "string", "doc": "Id of the customer" },
+    { "name": "name", "type": "string", "doc": "Name of Customer" },
+    {
+      "name":"items",
+      "type":{
+        "type": "array",
+        "items":{
+          "name":"Item",
+          "type":"record",
+          "fields":[
+            {"name":"id", "type":"long", "doc": "Id of the item"},
+            {"name":"description", "type":"string", "doc": "Description of the item"},
+            {"name":"amount", "type":"int", "doc":  "Unit price of the item"}
+          ]
+        }
+      }
+    }
+  ]
+}
